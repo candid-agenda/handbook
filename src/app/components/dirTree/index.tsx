@@ -15,7 +15,9 @@ import {
   IonPage,
   IonText,
   IonTitle,
+  IonIcon,
 } from '@ionic/react';
+import { documentTextOutline, linkOutline, logoYoutube } from 'ionicons/icons';
 import { GraphLink, GraphNode } from '../../utils/appTypes';
 
 const MAX_TREE_DEPTH = 8;
@@ -141,6 +143,22 @@ const getMemoContent = (memo?: string): MemoContent | null => {
     type: 'text',
     text: trimmedMemo,
   };
+};
+
+const getMemoIcon = (memoContent: MemoContent | null) => {
+  if (!memoContent) {
+    return null;
+  }
+
+  if (memoContent.type === 'youtube') {
+    return logoYoutube;
+  }
+
+  if (memoContent.type === 'url') {
+    return linkOutline;
+  }
+
+  return documentTextOutline;
 };
 
 const MemoModal = ({
@@ -442,6 +460,7 @@ const TreeBranch = ({
   const isCurrentNode = toDisplayPath(branch.node.pubkey) === toDisplayPath(currentKey);
   const [activeMemo, setActiveMemo] = useState<MemoContent | null>(null);
   const memoContent = getMemoContent(branch.node.memo);
+  const memoIcon = getMemoIcon(memoContent);
 
   return (
     <div
@@ -457,7 +476,13 @@ const TreeBranch = ({
           button={true}
           detail={true}
           color={isCurrentNode ? 'primary' : undefined}
-          onClick={() => onNodeClick(branch.node)}
+          onClick={() => {
+            if (isCurrentNode && memoContent) {
+              setActiveMemo(memoContent);
+              return;
+            }
+            onNodeClick(branch.node);
+          }}
         >
           <div
             style={{
@@ -469,32 +494,46 @@ const TreeBranch = ({
           >
             <code style={{ opacity: 0.75 }}>{pathLeafName(trimmedPubkey)}</code>
           </div>
+          {isCurrentNode && memoIcon && (
+            <IonIcon
+              slot="end"
+              icon={memoIcon}
+              aria-label={`Memo ${memoContent?.type ?? 'content'} icon`}
+            />
+          )}
         </IonItem>
       </IonList>
 
-      {isCurrentNode && memoContent && (
-        <IonList inset={true}>
-          <IonItem
-            lines="none"
-            button={true}
-            detail={false}
-            onClick={() => setActiveMemo(memoContent)}
-          >
-            <code>memo: {branch.node.memo?.trim()}</code>
-          </IonItem>
-        </IonList>
-      )}
-
       {branch.children.length > 0 && (
         <div style={{ marginTop: 4 }}>
-          {branch.children.map((child) => (
-            <TreeBranch
-              key={`${branch.node.id}-${child.node.id}`}
-              branch={child}
-              onNodeClick={onNodeClick}
-              currentKey={currentKey}
-            />
-          ))}
+          {branch.children.map((child, childIndex) => {
+            const connectingEdges = branch.outgoing.filter((edge) => edge.target === child.node.id);
+
+            return (
+              <div key={`${branch.node.id}-${child.node.id}-${childIndex}`}>
+                {connectingEdges.length > 0 && (
+                  <IonList inset={true}>
+                    {connectingEdges.map((edge, edgeIndex) => (
+                      <IonItem
+                        key={`${branch.node.id}-${child.node.id}-edge-${edge.height}-${edge.time}-${edgeIndex}`}
+                        lines="none"
+                        detail={false}
+                      >
+                        <code style={{ opacity: 0.8 }}>
+                          edge: h{edge.height} • t{edge.time}
+                        </code>
+                      </IonItem>
+                    ))}
+                  </IonList>
+                )}
+                <TreeBranch
+                  branch={child}
+                  onNodeClick={onNodeClick}
+                  currentKey={currentKey}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
