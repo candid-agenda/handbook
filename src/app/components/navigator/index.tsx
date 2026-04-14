@@ -92,7 +92,7 @@ const Navigator = ({
                   icon={sunnyOutline}
                   color="primary"
                 />
-                Candid Handbook
+                Memos
               </div>
             </IonCardTitle>
           </IonCardHeader>
